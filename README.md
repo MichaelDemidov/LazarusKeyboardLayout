@@ -14,7 +14,7 @@ function GetKeyboardLayoutAbbr: string;
 
 Delphi compatibility
 --------------------
-It is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
+It is also compatible with Delphi (tested on Delphi 7). To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
 
 How to make a visual keyboard layout indicator
 ----------------------------------------------
