@@ -14,7 +14,13 @@ function GetKeyboardLayoutAbbr: string;
 
 Delphi compatibility
 --------------------
-It is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi) 
+It is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
+
+How to make a visual keyboard layout indicator
+----------------------------------------------
+It's nearly impossible to keep track of all the ways a user can switch keyboard layouts. He can use a keyboard shortcut, click on the indicator, or use a third-party software. And requirement of cross-platform makes the task unsolvable.
+
+So I used a standard TLabel component and a TTimer. Once per second, the timer checks the current layout and writes it to the label caption.
 
 Author
 ------
