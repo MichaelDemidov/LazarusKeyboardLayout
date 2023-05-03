@@ -12,7 +12,7 @@ Also, this is cross-platform application (Windows + GNU/Linux) written in FreePa
 function GetKeyboardLayoutAbbr: string;
 ```
 
-The module `keyboardlayout.pas` contains this function and the auxiliary routines necessary for its operation.
+The module `keyboardlayout.pas` contains this function and the auxiliary routines necessary for its operation. I tested it under Windows 10 and ALT Linux.
 
 Delphi compatibility
 --------------------
