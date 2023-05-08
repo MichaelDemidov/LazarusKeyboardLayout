@@ -62,7 +62,7 @@ begin
     begin
       GetValueNames(Locales);
       for I := 0 to Locales.Count - 1 do
-        Locales[I] := Locales[I] + '=' + UpperCase(ReadString(Locales[I]));
+        Locales[I] := Locales[I] + '=' + ReadString(Locales[I]);
       CloseKey;
     end;
   finally
@@ -126,7 +126,7 @@ begin
     poWaitOnExit]) then
   begin
     Locales := TStringList.Create;
-    Locales.CommaText := UpperCase(ExtractValue(S, 'layout'));
+    Locales.CommaText := ExtractValue(S, 'layout');
   end;
 end;
 
