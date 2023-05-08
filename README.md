@@ -6,13 +6,19 @@ What is it
 
 I once tried to create a convenient login window for users who have more than one keyboard layout. This is a very common situation when an user forgets to switch the layout before entering a login or password. The OS-wide keyboard layout indicator is usually located in the corner of the screen, and the user must look here before typing. This is inconvenient, so I wanted to add the indicator to the login window itself so that it is in the front of the user's eyes.
 
-Also, this is cross-platform application (Windows + GNU/Linux) written in FreePascal / Lazarus and the indicator should work on both Windows and GNU/Linux. A core of it's algorithm is a cross-platform (Windows + GNU/Linux, should also work under all OSes with X11 support) function to retrieve the current keyboard locale from the OS in human-readable form ('US', 'RU', etc.):
+Also, this was cross-platform application (Windows + GNU/Linux) written in FreePascal / Lazarus and the indicator should work on both OSes.
+
+A core of it's algorithm is a cross-platform (Windows + GNU/Linux, I think, it should also work under all OSes with X11 support like FreeBSD) function to retrieve the current keyboard locale from the OS in human-readable form ('US', 'RU', etc.):
 
 ``` delphi
 function GetKeyboardLayoutAbbr: string;
 ```
 
+Files
+-----
 The module `keyboardlayout.pas` contains this function and the auxiliary routines necessary for its operation. I tested it under Windows 10 and ALT Linux.
+
+Folder `demo` belong to the demo project that illustrates the use of this procedure.
 
 Delphi compatibility
 --------------------
