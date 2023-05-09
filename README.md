@@ -22,6 +22,10 @@ Folder `demo` belong to the demo project that illustrates the use of this proced
 
 ![Demo Windows](demo_windows.png) ![Demo AltLinux](demo_altlinux.png)
 
+Dependencies
+------------
+Nothing special, just the default LCL package. Tested on Lazarus 2.2.4 and 2.2.6, should work on earlier (more or less modern) and later versions.
+
 Delphi compatibility
 --------------------
 It is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
