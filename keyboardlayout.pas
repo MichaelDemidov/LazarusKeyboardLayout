@@ -2,7 +2,7 @@
 
     Cross-platform (Windows + GNU/Linux X11) function to retrieve
     the current keyboard layout from the OS in human-readable form
-    ('US', 'RU', etc.) written in FreePascal / Lazarus. It is also
+    ('us', 'it', etc.) written in FreePascal / Lazarus. It is also
     Delphi compatible, see warning below.
 
     Copyright (c) 2023, Michael Demidov
@@ -27,7 +27,7 @@ unit KeyboardLayout;
 
 interface
 
-// Get the current layout as two-letter string ('US', 'RU', etc.)
+// Get the current layout as two-letter string ('us', 'it', etc.)
 function GetKeyboardLayoutAbbr: string;
 
 implementation
@@ -41,7 +41,7 @@ uses
 {$ENDIF}
 
 var
-  Locales: TStringList = nil; // list of all locales available in the OS:
+  Layouts: TStringList = nil; // list of all layouts available in the OS:
   // in Windows: each string is a pair of locale id and abbreviation,
   //   e.g. 00000409=US
   // in X11: each string is an abbreviation, and is selected by index
@@ -49,20 +49,20 @@ var
 {$IF defined(WINDOWS)}
 // Read locale list from the system registry. If anyone knows better way--
 // let me know, please
-procedure LoadLocales;
+procedure LoadLayouts;
 var
   I: Integer;
 begin
   with TRegistry.Create(KEY_READ) do
   try
     RootKey := HKEY_LOCAL_MACHINE;
-    Locales := TStringList.Create;
+    Layouts := TStringList.Create;
     if OpenKeyReadOnly('\SYSTEM\CurrentControlSet\Control\Keyboard ' +
       'Layout\DosKeybCodes') then
     begin
-      GetValueNames(Locales);
-      for I := 0 to Locales.Count - 1 do
-        Locales[I] := Locales[I] + '=' + ReadString(Locales[I]);
+      GetValueNames(Layouts);
+      for I := 0 to Layouts.Count - 1 do
+        Layouts[I] := Layouts[I] + '=' + ReadString(Layouts[I]);
       CloseKey;
     end;
   finally
@@ -76,12 +76,14 @@ var
   Z: array[0..KL_NAMELENGTH] of Char;
 begin
   if GetKeyboardLayoutName(Z) then
-    Result := Locales.Values[Z];
+    Result := Layouts.Values[Z];
 end;
 
 {$ELSE}
 
-// A helper function for parsing command output
+// A helper function for parsing command output. Both setxkbmap and xset commands
+// return a set of values in the form "key: value", divided by either spaces,
+// tabs or carriage returns
 function ExtractValue(const DataArray, Key: string): string;
 var
   I, J, L: Integer;
@@ -114,8 +116,8 @@ begin
   end;
 end;
 
-// Get a comma-separated layout list, e.g. 'us,ru'
-procedure LoadLocales;
+// Get a comma-separated layout list, e.g. 'us,ru', and store it into TStringList
+procedure LoadLayouts;
 const
   CmdGetListEx = 'setxkbmap';
   CmdGetListParams = '-query';
@@ -125,15 +127,17 @@ begin
   if RunCommand(CmdGetListEx, [CmdGetListParams], S, [poNoConsole,
     poWaitOnExit]) then
   begin
-    Locales := TStringList.Create;
-    Locales.CommaText := ExtractValue(S, 'layout');
+    Layouts := TStringList.Create;
+    Layouts.CommaText := ExtractValue(S, 'layout');
   end;
 end;
 
 // Get a number containing the identifier of the current layout in the format
 // 0000X0YY, where X is the zero-based index of the current layout (i.e. 'ru' in
-// the example above), and YY is a state of keyboard (CapsLock, NumLock, etc.)
-// and can have values between 00 and 32--run xset in a terminal to see details
+// the example above), and YY is a state of keyboard LEDs (CapsLock, NumLock,
+// etc.) and can have values between 00 and 32--run xset in a terminal or read
+// it's man page to learn details. The identifier of the current layout is 
+// an index in the Layouts list
 function GetKeyboardLayoutAbbr: string;
 const
   CmdGetIdEx = 'xset';
@@ -149,17 +153,17 @@ begin
     S := ExtractValue(S, 'LED mask');
     if S <> '' then
     begin
-      Val(S.SubString(0, 5), I, E);
+      Val(S.SubString(0, 5), I, E); // S.SubString(0, 5) = '0000X'
       if E = 0 then
-        Result := Locales[I];
+        Result := Layouts[I];
     end;
   end;
 end;
 {$ENDIF}
 
 initialization
-  LoadLocales;
+  LoadLayouts;
 finalization
-  if Assigned(Locales) then
-    Locales.Free;
+  if Assigned(Layouts) then
+    Layouts.Free;
 end.
