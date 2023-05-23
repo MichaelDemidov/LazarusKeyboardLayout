@@ -21,6 +21,8 @@ begin
   Application.Scaled:=True;
   Application.Initialize;
   Application.CreateForm(TfrmEnterPassword, frmEnterPassword);
+  if not frmEnterPassword.Success then
+    Application.Terminate;
   Application.Run;
 end.
 

@@ -1,5 +1,6 @@
-LazarusKeyboardLayout.code-workspace
+*.code-workspace
 demo/lib
 demo/backup
-demo/*.exe
+demo/LKLTest.exe
+demo/LKLTest.lps
 demo/LKLTest
