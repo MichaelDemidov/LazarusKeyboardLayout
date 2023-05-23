@@ -16,7 +16,7 @@ function GetKeyboardLayoutAbbr: string;
 
 Files
 -----
-The module `keyboardlayout.pas` contains this function and the auxiliary routines necessary for its operation. I tested it under Windows 10 and ALT Linux.
+The module `keyboardlayout.pas` contains this function and the auxiliary routines necessary for its operation. I tested it under Windows 10 and ALT Linux 10.
 
 Folder `demo` belong to the demo project that illustrates the use of this procedure.
 
@@ -26,15 +26,15 @@ Nothing special, just the default LCL package. Tested on Lazarus 2.2.4 and 2.2.6
 
 Demo
 ----
-The demo project can be compiled under both Windows and GNU/Linux (the left screenshot is from Windows 10, the right one if from Alt Linux 10 with GNOME shell).
+The demo project can be compiled under both Windows and GNU/Linux (the left screenshot is from Windows 10, the right one if from ALT Linux 10 with GNOME shell). Unfortunately I can't test it on macOS.
 
 ![Demo Windows](demo_windows.png) ![Demo AltLinux](demo_altlinux.png)
 
 On Windows, it uses system hooks to intercept keyboard layout changes.
 
-But it seems almost impossible to keep track of all the ways a user can switch keyboard layouts in Linux. He can use a keyboard shortcut, click on the layout indicator, or use third-party software. And the need to work in different desktop environments makes the task unsolvable. Therefore, I used the standard TLabel and TTimer components. Once per second, the timer checks the current layout and writes it to the label caption.
+But it seems almost impossible to keep track of all the ways a user can switch keyboard layouts in Linux. They can use a keyboard shortcut, click on the layout indicator, or use third-party software. There are no system-wide messaging mechanisms (or I don't know about them, and the need to work in different desktop environments makes the task unsolvable. Therefore, I used the standard TTimer component. Once per second, it checks the current layout and writes it to the label caption.
 
-*I understand that the timer might be a bad practice here, but I don't know of a better way because my Linux programming experience is relatively limited. Let me know if you have a better solution.*
+*I understand that using a timer might be a bad practice here, but I don't know of a better way because my Linux programming experience is relatively limited. Let me know if you have a better solution.*
 
 Delphi compatibility
 --------------------
