@@ -20,6 +20,10 @@ The module `keyboardlayout.pas` contains this function and the auxiliary routine
 
 Folder `demo` belong to the demo project that illustrates the use of this procedure.
 
+Dependencies
+------------
+Nothing special, just the default LCL package. Tested on Lazarus 2.2.4 and 2.2.6, should work on earlier (more or less modern) and later versions.
+
 Demo
 ----
 The demo project can be compiled under both Windows and GNU/Linux (the left screenshot is from Windows 10, the right one if from Alt Linux 10 with GNOME shell).
@@ -32,13 +36,11 @@ But it seems almost impossible to keep track of all the ways a user can switch k
 
 *I understand that the timer might be a bad practice here, but I don't know of a better way because my Linux programming experience is relatively limited. Let me know if you have a better solution.*
 
-Dependencies
-------------
-Nothing special, just the default LCL package. Tested on Lazarus 2.2.4 and 2.2.6, should work on earlier (more or less modern) and later versions.
-
 Delphi compatibility
 --------------------
-It is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
+The `keyboardlayout.pas` file is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
+
+The demo project is incompatible with Delphi due to different form (`dfm` / `lfm`) formats. You can recreate the form and use the source code.
 
 Author
 ------
