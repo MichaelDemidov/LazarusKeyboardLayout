@@ -26,9 +26,11 @@ The demo project can be compiled under both Windows and GNU/Linux (the left scre
 
 ![Demo Windows](demo_windows.png) ![Demo AltLinux](demo_altlinux.png)
 
-On Windows, it uses system hooks to intercept keyboard layout changes. On GNU/Linux, it uses a timer.
+On Windows, it uses system hooks to intercept keyboard layout changes.
 
-*I understand that the timer is bad practice here, but I don't know of a better way because my Linux programming experience is relatively limited. Let me know if you have a better solution.*
+But it seems almost impossible to keep track of all the ways a user can switch keyboard layouts in Linux. He can use a keyboard shortcut, click on the layout indicator, or use third-party software. And the need to work in different desktop environments makes the task unsolvable. Therefore, I used the standard TLabel and TTimer components. Once per second, the timer checks the current layout and writes it to the label caption.
+
+*I understand that the timer might be a bad practice here, but I don't know of a better way because my Linux programming experience is relatively limited. Let me know if you have a better solution.*
 
 Dependencies
 ------------
@@ -37,12 +39,6 @@ Nothing special, just the default LCL package. Tested on Lazarus 2.2.4 and 2.2.6
 Delphi compatibility
 --------------------
 It is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
-
-How to make a visual keyboard layout indicator
-----------------------------------------------
-It's nearly impossible to keep track of all the ways a user can switch keyboard layouts. He can use a keyboard shortcut, click on the indicator, or use a third-party software. And requirement of cross-platform makes the task unsolvable.
-
-So I used a standard TLabel component and a TTimer. Once per second, the timer checks the current layout and writes it to the label caption.
 
 Author
 ------
