@@ -14,6 +14,8 @@ A core of it's algorithm is a cross-platform (Windows + GNU/Linux, I think, it s
 function GetKeyboardLayoutAbbr: string;
 ```
 
+**Note.** *It would be nice to add support for macOS, but I just don't have a Mac.*
+
 Files
 -----
 The module `keyboardlayout.pas` contains this function and the auxiliary routines necessary for its operation. I tested it under Windows 10 and ALT Linux 10.
@@ -32,15 +34,15 @@ The demo project can be compiled under both Windows and GNU/Linux (the left scre
 
 On Windows, it uses system hooks to intercept keyboard layout changes.
 
-But it seems almost impossible to keep track of all the ways a user can switch keyboard layouts in Linux. They can use a keyboard shortcut, click on the layout indicator, or use third-party software. There are no system-wide messaging mechanisms (or I don't know about them, and the need to work in different desktop environments makes the task unsolvable. Therefore, I used the standard TTimer component. Once per second, it checks the current layout and writes it to the label caption.
+But there are no system-wide messaging mechanisms in GNU/Linux (or I don't know about them), and the need to work in different desktop environments makes the task unsolvable. Therefore, I used the standard TTimer component. Once per second, it checks the current layout and writes it to the label caption.
 
-*I understand that using a timer might be a bad practice here, but I don't know of a better way because my Linux programming experience is relatively limited. Let me know if you have a better solution.*
+**Note** *I understand that using a timer might be a bad practice here, but I don't know of a better way because my Linux programming experience is relatively limited. Let me know if you have a better solution.*
 
 Delphi compatibility
 --------------------
 The `keyboardlayout.pas` file is also compatible with Delphi. To use it with Delphi on Windows, remove the {$mode ObjFPC}{$H+} line, all {$IF defined(WINDOWS)} lines, and all lines between the associated {$ELSE} and {$ENDIF}, including themselves. You may also need to fix the module names in the section 'uses' (depending on the version of Delphi).
 
-The demo project is incompatible with Delphi due to different form (`dfm` / `lfm`) formats. You can recreate the form and use the source code.
+The demo project is incompatible with Delphi due to different form formats (`dfm` / `lfm`). You can recreate the form and use the source code.
 
 Author
 ------
