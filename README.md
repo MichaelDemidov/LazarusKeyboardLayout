@@ -28,7 +28,7 @@ Nothing special, just the default LCL package. Tested on Lazarus 2.2.4 and 2.2.6
 
 Demo
 ----
-The demo project can be compiled under both Windows and GNU/Linux (the left screenshot is from Windows 10, the right one if from ALT Linux 10 with GNOME shell).
+The demo project can be compiled under both Windows and GNU/Linux (the left screenshot is from Windows 10, the right one is from ALT Linux 10 with GNOME shell).
 
 ![Demo Windows](demo_windows.png) ![Demo AltLinux](demo_altlinux.png)
 
