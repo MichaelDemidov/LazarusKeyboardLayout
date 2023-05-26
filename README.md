@@ -30,6 +30,8 @@ Demo
 ----
 The demo project can be compiled under both Windows and GNU/Linux (the left screenshot is from Windows 10, the right one is from ALT Linux 10 with GNOME shell).
 
+The `TfrmEnterPassword` class used here is part of a real project.
+
 ![Demo Windows](demo_windows.png) ![Demo AltLinux](demo_altlinux.png)
 
 On Windows, it uses system hooks to intercept keyboard layout changes.

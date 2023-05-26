@@ -8,8 +8,10 @@ uses
   SysUtils, Forms, Controls, StdCtrls, ExtCtrls, Classes;
 
 type
+  TLoginResult = (lrSuccess, lrFail, lrAbort);
 
-  TCheckPassword = function(const Login, Password: string): Boolean;
+  TOnVerifyPassword = function(const Login, Password: string; out ErrorMessage:
+    string): TLoginResult of object;
 
   { TfrmEnterPassword }
 
@@ -41,8 +43,8 @@ type
     FHook: THandle;
     {$ENDIF}
 
-    // Check password event
-    FCheckPassword: TCheckPassword;
+    // Verify password event
+    FOnVerifyPassword: TOnVerifyPassword;
 
     // Getters and setters for the properties below
     function GetLogin: string;
@@ -53,8 +55,8 @@ type
     // Update btnOK.Enabled property if the login and password are [not] empty
     procedure UpdateButtons;
 
-    // Check the password
-    function DoCheckPassword: Boolean;
+    // Verify the password
+    function DoVerifyPassword(out ErrorMessage: string): TLoginResult;
   public
     // User login
     property Login: string read GetLogin write SetLogin;
@@ -62,9 +64,9 @@ type
     // User password
     property Password: string read GetPassword write SetLogin;
 
-    // Check password event
-    property CheckPassword: TCheckPassword read FCheckPassword write
-      FCheckPassword;
+    // Verify password event
+    property OnVerifyPassword: TOnVerifyPassword read FOnVerifyPassword write
+      FOnVerifyPassword;
 
     // True if the login attempt was successful
     function Success: Boolean;
@@ -83,7 +85,7 @@ uses
   {$ELSE}
   LCLType,
   {$ENDIF}
-  Graphics, KeyboardLayout;
+  Graphics, Dialogs, KeyboardLayout;
 
 { TfrmEnterPassword }
 
@@ -128,7 +130,7 @@ begin
   {$IF defined(WINDOWS)}
   FHook := 0;
   {$ENDIF}
-  FCheckPassword := nil;
+  FOnVerifyPassword := nil;
 
   // Appearance
   edtPassword.PasswordChar := #149;
@@ -139,7 +141,7 @@ end;
 
 procedure TfrmEnterPassword.FormDestroy(Sender: TObject);
 begin
-  FCheckPassword := nil;
+  FOnVerifyPassword := nil;
 end;
 
 procedure TfrmEnterPassword.edtLoginChange(Sender: TObject);
@@ -147,22 +149,32 @@ begin
   UpdateButtons;
 end;
 
-function TfrmEnterPassword.DoCheckPassword: Boolean;
+function TfrmEnterPassword.DoVerifyPassword(out ErrorMessage: string):
+  TLoginResult;
 begin
-  Result := False;
+  Result := lrAbort;
 
-  // Check the password
-  if Assigned(FCheckPassword) then
-    FCheckPassword(Login, Password);
+  // Verify the password
+  if Assigned(FOnVerifyPassword) then
+    Result := FOnVerifyPassword(Login, Password, ErrorMessage);
 end;
 
 procedure TfrmEnterPassword.btnOkClick(Sender: TObject);
+var
+  ErrorMessage: string;
 begin
-  // Check the password, set the ModalResult
-  if DoCheckPassword then
-    ModalResult := mrOk
-  else
-    ModalResult := mrCancel;
+  // Verify the password, set the ModalResult
+  case DoVerifyPassword(ErrorMessage) of
+    lrSuccess: // login & password successfully verified
+      ModalResult := mrOk;
+    lrFail: // wrong login or password, give the user another chance
+      ;
+    lrAbort: // the user has exhausted all their chances
+      ModalResult := mrCancel;
+  end;
+  // If there is an error message, show it
+  if ErrorMessage <> '' then
+    MessageDlg(ErrorMessage, mtError, [mbOk], 0);
 end;
 
 procedure TfrmEnterPassword.edtPasswordChange(Sender: TObject);
@@ -173,7 +185,7 @@ end;
 procedure TfrmEnterPassword.edtPasswordKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  // Press Ctrl key to view the password!
+  // Little trick: press the Ctrl key to view the password!
   if Key = VK_CONTROL then
     edtPassword.PasswordChar := #0;
 end;
@@ -181,7 +193,7 @@ end;
 procedure TfrmEnterPassword.edtPasswordKeyUp(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  // The password is visible only while the key is down
+  // The password is visible only while the Ctrl key is down
   if Key = VK_CONTROL then
     edtPassword.PasswordChar := #149
 end;
@@ -216,7 +228,7 @@ begin
   {$IF defined(WINDOWS)}
   // Set the Windows hook
   FHook := SetWindowsHookEx(WH_SHELL, @HookProc, 0, MainThreadId);
-  if FHook = 0 then // if failed then use the timer
+  if FHook = 0 then // if failed, use the timer
   begin
     tmrKeyboardLayout.Enabled := True;
     UpdateLayout;
