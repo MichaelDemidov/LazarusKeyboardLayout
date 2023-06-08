@@ -1,6 +1,7 @@
 (**********************************************************************
 
-    Cross-platform (Windows + GNU/Linux X11) function to retrieve
+
+    Cross-platform (Windows + GNU/Linux X11) class to retrieve
     the current keyboard layout from the OS in human-readable form
     ('us', 'it', etc.) written in FreePascal / Lazarus. It is also
     Delphi compatible, see warning below.
@@ -27,36 +28,115 @@ unit KeyboardLayout;
 
 interface
 
-// Get the current layout as two-letter string ('us', 'it', etc.)
-function GetKeyboardLayoutAbbr: string;
+uses
+  Sysutils, Classes;
+
+type
+  { TKeyboardLayoutIndicator }
+
+  TIndicatorEvent = procedure(LayoutText: string) of object;
+
+  TKeyboardLayoutIndicator = class;
+
+{$IF not defined(WINDOWS)}
+  TXKbdThread = class(TThread)
+  private
+    // Current layout
+    FCurrLayout: string;
+    // Link to the TKeyboardLayoutIndicator object
+    FKeyboardLayoutIndicator: TKeyboardLayoutIndicator;
+    // Procedure to synchronize
+    procedure UpdateLayout;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(CreateSuspended: Boolean; AOwner:
+      TKeyboardLayoutIndicator);
+    destructor Destroy; override;
+  end;
+{$ENDIF}
+
+  TKeyboardLayoutIndicator = class
+  private
+    FOnUpdateIndicator: TIndicatorEvent;
+{$IF defined(WINDOWS)}
+    // See the Layouts property below
+    FLayouts: TStringList;
+    // The system hook handle for Windows
+    FHook: THandle;
+{$ELSE}
+    FXKbdThread: TXKbdThread;
+{$ENDIF}
+  public
+    // Constructor and destructor
+    constructor Create;
+    destructor Destroy; override;
+
+    // Start keyboard layout watching
+    procedure StartWatching;
+
+    // Stop keyboard layout watching
+    procedure StopWatching;
+
+    // Update indicator event (see the note below)
+    property OnUpdateIndicator: TIndicatorEvent read FOnUpdateIndicator write
+      FOnUpdateIndicator;
+{$IF defined(WINDOWS)}
+    // List of all locale ids / keyboard layouts available in the Windows'
+    // system registry: each string is a pair of locale id and abbreviation,
+    // e.g. '00000409=US'
+    property Layouts: TStringList read FLayouts;
+{$ENDIF}
+  end;
+
+// Warning! Creating multiple instances of the TKeyboardLayoutIndicator class
+// *in Windows* is pointless due to a system hook using this global variable.
+// If you need more than one indicator in your application, please think of
+// something to hold a list of them and use the single OnUpdateIndicator
+// event handler. Or modify the TKeyboardLayoutIndicator class to create a list
+// of event handlers instead of a single OnUpdateIndicator
+var
+  KeyboardLayoutIndicator: TKeyboardLayoutIndicator;
 
 implementation
 
 uses
-  Classes, SysUtils,
 {$IF defined(WINDOWS)}
   Windows, Registry;
 {$ELSE}
-  Process;
+  xlib, XKB, xkblib, keysym;
 {$ENDIF}
 
-var
-  Layouts: TStringList = nil; // list of all layouts available in the OS:
-  // in Windows: each string is a pair of locale id and abbreviation,
-  //   e.g. 00000409=US
-  // in X11: each string is an abbreviation, and is selected by index
-
 {$IF defined(WINDOWS)}
+// The hook function; it uses the global variable KeyboardLayoutIndicator
+function HookProc(nCode: Longint; wParam: WParam;
+  lParam: LParam): LResult; stdcall;
+var
+  Z: array[0..KL_NAMELENGTH] of Char;
+  CurrLayout: string;
+begin
+  if Assigned(KeyboardLayoutIndicator.OnUpdateIndicator)
+    and (nCode = HSHELL_LANGUAGE) then
+  begin
+    // Select the current layout from the list
+    if GetKeyboardLayoutName(Z) then
+    begin
+      CurrLayout := KeyboardLayoutIndicator.Layouts.Values[Z];
+      KeyboardLayoutIndicator.OnUpdateIndicator(CurrLayout);
+    end;
+  end;
+  Result := CallNextHookEx(WH_SHELL, nCode, wParam, lParam);
+end;
+
 // Read locale list from the system registry. If anyone knows better way--
 // let me know, please
-procedure LoadLayouts;
+procedure LoadLayouts(Layouts: TStrings);
 var
   I: Integer;
 begin
   with TRegistry.Create(KEY_READ) do
   try
     RootKey := HKEY_LOCAL_MACHINE;
-    Layouts := TStringList.Create;
     if OpenKeyReadOnly('\SYSTEM\CurrentControlSet\Control\Keyboard ' +
       'Layout\DosKeybCodes') then
     begin
@@ -69,101 +149,151 @@ begin
     Free;
   end;
 end;
-
-// Select the current layout from the list
-function GetKeyboardLayoutAbbr: string;
-var
-  Z: array[0..KL_NAMELENGTH] of Char;
-begin
-  if GetKeyboardLayoutName(Z) then
-    Result := Layouts.Values[Z];
-end;
-
 {$ELSE}
 
-// A helper function for parsing command output. Both setxkbmap and xset commands
-// return a set of values in the form "key: value", divided by either spaces,
-// tabs or carriage returns
-function ExtractValue(const DataArray, Key: string): string;
-var
-  I, J, L: Integer;
+{ TXKbdThread }
+
+constructor TXKbdThread.Create(CreateSuspended: Boolean; AOwner:
+  TKeyboardLayoutIndicator);
 begin
-  Result := '';
-  I := Pos(Key + ':', DataArray);
-  if I > 0 then
+  inherited Create(CreateSuspended);
+  FCurrLayout := '';
+  FKeyboardLayoutIndicator := AOwner;
+  FreeOnTerminate := False;
+  Priority := tpNormal;
+end;
+
+destructor TXKbdThread.Destroy;
+begin
+  FKeyboardLayoutIndicator := nil;
+  inherited Destroy;
+end;
+
+procedure TXKbdThread.UpdateLayout;
+begin
+  if Assigned(FKeyboardLayoutIndicator.OnUpdateIndicator) then
+    FKeyboardLayoutIndicator.OnUpdateIndicator(FCurrLayout);
+end;
+
+procedure TXKbdThread.Execute;
+
+  procedure UpdateCurrLayout(Display: PDisplay; Keyboard: PXkbDescPtr;
+    State: TXkbStateRec);
+  var
+    PLayout: PChar;
+    Layout: string;
   begin
-    L := I + Length(Key) + 1;
-    while (L < Length(DataArray)) and (DataArray[L] = ' ') do
-      Inc(L);
-    if L < Length(DataArray) then
+    PLayout := XGetAtomName(Display, Keyboard^.names^.groups[State.group]);
+    Layout := PLayout;
+    Delete(Layout, 3, Length(Layout) - 2);
+    if Layout <> FCurrLayout then
     begin
-      I := Pos(':', DataArray, L);
-      J := Pos(#10, DataArray, L);
-      if J < I then
-        I := J - 1
-      else
+      FCurrLayout := Layout;
+      Synchronize(@UpdateLayout);
+    end;
+    XFree(PLayout);
+  end;
+
+var
+  Event: TXEvent;
+  Display: PDisplay;
+  State: TXkbStateRec;
+  OldGroup: Integer = -1;
+  Keyboard: PXkbDescPtr;
+begin
+  // Get the Display handle
+  Display := XOpenDisplay(nil);
+
+  // Catch the keyboard events
+  if Assigned(Display) then
+  begin
+    if XkbSelectEvents(Display, XkbUseCoreKbd, XkbAllEventsMask,
+      XkbAllEventsMask) then
+    begin
+      XKeysymToKeycode(Display, XK_F1);
+      Keyboard := XkbGetKeyboard(Display, XkbAllComponentsMask, XkbUseCoreKbd);
+
+      if XkbGetState(Display, XkbUseCoreKbd, @State) = 0 then
       begin
-        if I = 0 then
-          I := Length(DataArray)
-        else
-          while not (DataArray[I] in [' ', #10, #9]) do
-            Dec(I);
+        UpdateCurrLayout(Display, Keyboard, State);
+        OldGroup := State.group;
       end;
-      while DataArray[I] in [' ', #10, #9] do
-        Dec(I);
-      Result := DataArray.Substring(L - 1, I - L + 1);
+
+      while not Terminated do
+      begin
+        if XkbGetState(Display, XkbUseCoreKbd, @State) = 0 then
+          while not Terminated and (XPending(Display) <> 0) do
+          begin
+            XNextEvent(Display, @Event);
+
+            if State.group <> OldGroup then
+            begin
+              UpdateCurrLayout(Display, Keyboard, State);
+              OldGroup := State.group;
+            end;
+          end;
+        if not Terminated then
+          XNextEvent(Display, @Event);
+      end;
+
+      XkbFreeKeyboard(Keyboard, XkbAllComponentsMask, True);
     end;
+
+    // Release the resources used, destroy the window
+    XkbSelectEvents(Display, XkbUseCoreKbd, XkbAllEventsMask, 0);
+    XCloseDisplay(Display);
   end;
 end;
 
-// Get a comma-separated layout list, e.g. 'us,ru', and store it into TStringList
-procedure LoadLayouts;
-const
-  CmdGetListEx = 'setxkbmap';
-  CmdGetListParams = '-query';
-var
-  S: string;
-begin
-  if RunCommand(CmdGetListEx, [CmdGetListParams], S, [poNoConsole,
-    poWaitOnExit]) then
-  begin
-    Layouts := TStringList.Create;
-    Layouts.CommaText := ExtractValue(S, 'layout');
-  end;
-end;
-
-// Get a number containing the identifier of the current layout in the format
-// 0000X0YY, where X is the zero-based index of the current layout (i.e. 'ru' in
-// the example above), and YY is a state of keyboard LEDs (CapsLock, NumLock,
-// etc.) and can have values between 00 and 32--run xset in a terminal or read
-// it's man page to learn details. The identifier of the current layout is 
-// an index in the Layouts list
-function GetKeyboardLayoutAbbr: string;
-const
-  CmdGetIdEx = 'xset';
-  CmdGetIdParams = '-q';
-var
-  S: string;
-  I, E: Integer;
-begin
-  Result := '';
-  if RunCommand(CmdGetIdEx, [CmdGetIdParams], S, [poNoConsole, poWaitOnExit])
-  then
-  begin
-    S := ExtractValue(S, 'LED mask');
-    if S <> '' then
-    begin
-      Val(S.SubString(0, 5), I, E); // S.SubString(0, 5) = '0000X'
-      if E = 0 then
-        Result := Layouts[I];
-    end;
-  end;
-end;
 {$ENDIF}
 
-initialization
-  LoadLayouts;
-finalization
-  if Assigned(Layouts) then
-    Layouts.Free;
+{ TKeyboardLayoutIndicator }
+
+constructor TKeyboardLayoutIndicator.Create;
+begin
+  FOnUpdateIndicator := nil;
+{$IF defined(WINDOWS)}
+  FLayouts := TStringList.Create;
+  LoadLayouts(FLayouts);
+{$ELSE}
+  FXKbdThread := TXKbdThread.Create(True, Self);
+{$eNDIF}
+end;
+
+destructor TKeyboardLayoutIndicator.Destroy;
+begin
+  FOnUpdateIndicator := nil;
+  StopWatching;
+{$IF defined(WINDOWS)}
+  FreeAndNil(FLayouts);
+{$ELSE}
+  FreeAndNil(FXKbdThread);
+{$ENDIF}
+  inherited Destroy;
+end;
+
+procedure TKeyboardLayoutIndicator.StartWatching;
+begin
+{$IF defined(WINDOWS)}
+  // Set the system hook
+  FHook := SetWindowsHookEx(WH_SHELL, @HookProc, 0, MainThreadId);
+{$ELSE}
+  // Start the thread
+  FXKbdThread.Start;
+{$ENDIF}
+end;
+
+procedure TKeyboardLayoutIndicator.StopWatching;
+begin
+{$IF defined(WINDOWS)}
+  // Unhook the system hook
+  if FHook <> 0 then
+    UnhookWindowsHookEx(FHook);
+{$ELSE}
+  // Stop the thread
+  if Assigned(FXKbdThread) then
+    FXKbdThread.Terminate;
+{$ENDIF}
+end;
+
 end.

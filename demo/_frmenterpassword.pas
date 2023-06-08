@@ -5,7 +5,7 @@ unit _frmEnterPassword;
 interface
 
 uses
-  SysUtils, Forms, Controls, StdCtrls, ExtCtrls, Classes;
+  SysUtils, Forms, Controls, StdCtrls, Classes;
 
 type
   TLoginResult = (lrSuccess, lrFail, lrAbort);
@@ -23,7 +23,6 @@ type
     lblKeyboardLayout: TLabel;
     lblLogin: TLabel;
     lblPassword: TLabel;
-    tmrKeyboardLayout: TTimer;
     procedure btnOkClick(Sender: TObject);
     procedure edtLoginChange(Sender: TObject);
     procedure edtPasswordChange(Sender: TObject);
@@ -35,14 +34,8 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure tmrKeyboardLayoutTimer(Sender: TObject);
-    procedure UpdateLayout;
+    procedure UpdateIndicator(LayoutText: string);
   private
-    {$IF defined(WINDOWS)}
-    // The system hook handle for Windows
-    FHook: THandle;
-    {$ENDIF}
-
     // Verify password event
     FOnVerifyPassword: TOnVerifyPassword;
 
@@ -80,12 +73,7 @@ implementation
 {$R *.lfm}
 
 uses
-  {$IF defined(WINDOWS)}
-  Windows,
-  {$ELSE}
-  LCLType,
-  {$ENDIF}
-  Graphics, Dialogs, KeyboardLayout;
+  LCLType, Graphics, Dialogs, KeyboardLayout;
 
 { TfrmEnterPassword }
 
@@ -114,11 +102,6 @@ begin
   btnOk.Enabled := (Login <> '') and (Password <> '')
 end;
 
-procedure TfrmEnterPassword.UpdateLayout;
-begin
-  lblKeyboardLayout.Caption := UpperCase(GetKeyboardLayoutAbbr);
-end;
-
 function TfrmEnterPassword.Success: Boolean;
 begin
   Result := ShowModal = mrOk;
@@ -127,10 +110,12 @@ end;
 procedure TfrmEnterPassword.FormCreate(Sender: TObject);
 begin
   // The initial field values
-  {$IF defined(WINDOWS)}
-  FHook := 0;
-  {$ENDIF}
   FOnVerifyPassword := nil;
+
+  // Keyboard indicator init
+  KeyboardLayoutIndicator := TKeyboardLayoutIndicator.Create;
+  KeyboardLayoutIndicator.OnUpdateIndicator := @UpdateIndicator;
+  KeyboardLayoutIndicator.StartWatching;
 
   // Appearance
   edtPassword.PasswordChar := #149;
@@ -142,6 +127,7 @@ end;
 procedure TfrmEnterPassword.FormDestroy(Sender: TObject);
 begin
   FOnVerifyPassword := nil;
+  FreeAndNil(KeyboardLayoutIndicator);
 end;
 
 procedure TfrmEnterPassword.edtLoginChange(Sender: TObject);
@@ -201,48 +187,18 @@ end;
 procedure TfrmEnterPassword.FormClose(Sender: TObject;
   var CloseAction: TCloseAction);
 begin
-  {$IF defined(WINDOWS)}
-  // Unhook the system hook
-  if FHook <> 0 then
-    UnhookWindowsHookEx(FHook);
-  {$ENDIF}
   // Stop the timer (if running) and free memory
-  tmrKeyboardLayout.Enabled := False;
   CloseAction := caFree;
 end;
-
-{$IF defined(WINDOWS)}
-// The hook function
-function HookProc(nCode: Longint; wParam: WParam; lParam: LParam): LResult;
-  stdcall;
-begin
-  if nCode = HSHELL_LANGUAGE then
-    frmEnterPassword.UpdateLayout;
-  Result := CallNextHookEx(WH_SHELL, nCode, wParam, lParam);
-end;
-{$ENDIF}
 
 procedure TfrmEnterPassword.FormShow(Sender: TObject);
 begin
   UpdateButtons;
-  {$IF defined(WINDOWS)}
-  // Set the Windows hook
-  FHook := SetWindowsHookEx(WH_SHELL, @HookProc, 0, MainThreadId);
-  if FHook = 0 then // if failed, use the timer
-  begin
-    tmrKeyboardLayout.Enabled := True;
-    UpdateLayout;
-  end;
-  {$ELSE}
-  // Start the timer
-  tmrKeyboardLayout.Enabled := True;
-  UpdateLayout;
-  {$ENDIF}
 end;
 
-procedure TfrmEnterPassword.tmrKeyboardLayoutTimer(Sender: TObject);
+procedure TfrmEnterPassword.UpdateIndicator(LayoutText: string);
 begin
-  UpdateLayout;
+  lblKeyboardLayout.Caption := UpperCase(LayoutText);
 end;
 
 end.
