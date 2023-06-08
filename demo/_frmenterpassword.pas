@@ -187,7 +187,7 @@ end;
 procedure TfrmEnterPassword.FormClose(Sender: TObject;
   var CloseAction: TCloseAction);
 begin
-  // Stop the timer (if running) and free memory
+  // Free memory
   CloseAction := caFree;
 end;
 
