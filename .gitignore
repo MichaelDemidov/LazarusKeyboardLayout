@@ -1,4 +1,5 @@
 *.code-workspace
+backup
 demo/lib
 demo/backup
 demo/LKLTest.exe
