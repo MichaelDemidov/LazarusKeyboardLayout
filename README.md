@@ -30,13 +30,11 @@ public
 end;
 ```
 
-**Note.** *It would be nice to add support for macOS, but I just don't have a Mac.*
-
 How it works?
 -------------
 On Windows, it uses system hooks to intercept keyboard layout changes.
 
-On Linux, it works more tricky: creates a separate thread to capture X keyboard events.
+On GNU/Linux, it works more tricky: creates a separate thread to capture X keyboard events.
 
 Files
 -----
@@ -64,11 +62,13 @@ The demo project is incompatible with Delphi due to different form formats (`dfm
 
 Known issues
 ------------
-I have not tested the class in a console application. On Linux, the X functions and events may not work.
+It would be nice to add support for macOS, but I just don't have a Mac.
 
-Creating multiple instances of the `TKeyboardLayoutIndicator` class *in Windows* is pointless due to a system hook using a global variable containing an instance of this class. If you need more than one indicator in your application, please think of something to hold a list of them and use the single `OnUpdateIndicator` event handler. Or modify the `TKeyboardLayoutIndicator` class to create a list of event handlers instead of a single `OnUpdateIndicator`.
+I have not tested the class in a console application. On GNU/Linux, the X event mechanism may not work.
 
-On Windows, the class reads two-letter locale names from the system registry. On Linux, it takes the full language name (e.g. 'english') and returns the first two letters from it. Thus, on many layouts the indicator will return different names (see the screenshots above: 'EN' on Linux and 'US' on Windows!). If someone knows how to do it more elegant way, please tell me.
+On Windows, creating multiple instances of the `TKeyboardLayoutIndicator` class is pointless due to a system hook using a global variable containing an instance of this class. If you need more than one indicator in your application, please think of something to hold a list of them and use the single `OnUpdateIndicator` event handler. Or modify the `TKeyboardLayoutIndicator` class to create a list of event handlers instead of a single `OnUpdateIndicator`.
+
+On Windows, the class reads two-letter locale names from the system registry. On GNU/Linux, it takes the full language name (e.g. 'english') and returns the first two letters from it. Thus, on many layouts the indicator will return different names (see the screenshots above: 'EN' on ALT Linux and 'US' on Windows!). If someone knows how to do it more elegant way, please tell me.
 
 Author
 ------
