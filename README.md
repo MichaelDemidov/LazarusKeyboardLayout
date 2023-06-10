@@ -44,7 +44,9 @@ Folder `demo` belong to the demo project that illustrates the use of this proced
 
 Dependencies
 ------------
-Nothing special, just the default LCL package. Tested on Lazarus 2.2.4 and 2.2.6, should work on earlier (more or less modern) and later versions.
+It doesn't require anything special to compile the code other than the standard LCL package. Tested on Lazarus 2.2.4 and 2.2.6, should work on earlier (more or less modern) and later versions.
+
+On Linux, it requires the X11 subsystem to run.
 
 Demo
 ----
@@ -68,7 +70,7 @@ I have not tested the class in a console application. On GNU/Linux, the X event 
 
 On Windows, creating multiple instances of the `TKeyboardLayoutIndicator` class is pointless due to a system hook using a global variable containing an instance of this class. If you need more than one indicator in your application, please think of something to hold a list of them and use the single `OnUpdateIndicator` event handler. Or modify the `TKeyboardLayoutIndicator` class to create a list of event handlers instead of a single `OnUpdateIndicator`.
 
-On Windows, the class reads two-letter locale names from the system registry. On GNU/Linux, it takes the full language name (e.g. 'english') and returns the first two letters from it. Thus, on many layouts the indicator will return different names (see the screenshots above: 'EN' on ALT Linux and 'US' on Windows!). If someone knows how to do it more elegant way, please tell me.
+On Windows, the class reads the two-letter (or three-letter in some exotic cases) locale name abbreviation from the OS using `GetLocaleInfo` function according to the ISO-639 standard. On GNU/Linux, it takes the full language name (e.g. 'english') and returns the first two letters from it. Thus, on some layouts the indicator will return different names. If someone knows how to do it more elegant way, please tell me.
 
 Author
 ------

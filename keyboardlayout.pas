@@ -29,27 +29,28 @@ unit KeyboardLayout;
 interface
 
 uses
-  Sysutils, Classes;
+  Classes;
 
 type
   { TKeyboardLayoutIndicator }
 
   TIndicatorEvent = procedure(LayoutText: string) of object;
 
+{$IF not defined(WINDOWS)}
   TKeyboardLayoutIndicator = class;
 
-{$IF not defined(WINDOWS)}
   TXKbdThread = class(TThread)
   private
     // Current layout
     FCurrLayout: string;
-    // Link to the TKeyboardLayoutIndicator object
+    // Link to the TKeyboardLayoutIndicator object to call the event handler
     FKeyboardLayoutIndicator: TKeyboardLayoutIndicator;
-    // Procedure to synchronize
+    // Procedure called from Synchronize() method
     procedure UpdateLayout;
   protected
     procedure Execute; override;
   public
+    // Constructor and destructor
     constructor Create(CreateSuspended: Boolean; AOwner:
       TKeyboardLayoutIndicator);
     destructor Destroy; override;
@@ -60,11 +61,10 @@ type
   private
     FOnUpdateIndicator: TIndicatorEvent;
 {$IF defined(WINDOWS)}
-    // See the Layouts property below
-    FLayouts: TStringList;
     // The system hook handle for Windows
     FHook: THandle;
 {$ELSE}
+    // The thread to handle the keyboard events
     FXKbdThread: TXKbdThread;
 {$ENDIF}
   public
@@ -81,74 +81,56 @@ type
     // Update indicator event (see the note below)
     property OnUpdateIndicator: TIndicatorEvent read FOnUpdateIndicator write
       FOnUpdateIndicator;
-{$IF defined(WINDOWS)}
-    // List of all locale ids / keyboard layouts available in the Windows'
-    // system registry: each string is a pair of locale id and abbreviation,
-    // e.g. '00000409=US'
-    property Layouts: TStringList read FLayouts;
-{$ENDIF}
   end;
 
-// Warning! Creating multiple instances of the TKeyboardLayoutIndicator class
-// *in Windows* is pointless due to a system hook using this global variable.
-// If you need more than one indicator in your application, please think of
-// something to hold a list of them and use the single OnUpdateIndicator
-// event handler. Or modify the TKeyboardLayoutIndicator class to create a list
-// of event handlers instead of a single OnUpdateIndicator
+// Warning! *On Windows,* creating multiple instances of the
+// TKeyboardLayoutIndicator class is pointless due to a system hook using this
+// global variable. If you need more than one indicator in your application,
+// please think of something to hold a list of them and use the single
+// OnUpdateIndicator event handler. Or modify the TKeyboardLayoutIndicator class
+// to create a list of event handlers instead of a single OnUpdateIndicator
 var
   KeyboardLayoutIndicator: TKeyboardLayoutIndicator;
 
 implementation
 
 uses
+  Sysutils,
 {$IF defined(WINDOWS)}
-  Windows, Registry;
+  Windows;
 {$ELSE}
   xlib, XKB, xkblib, keysym;
 {$ENDIF}
 
 {$IF defined(WINDOWS)}
-// The hook function; it uses the global variable KeyboardLayoutIndicator
+
+// The hook function; it uses the global variable KeyboardLayoutIndicator--see
+// the warning above
 function HookProc(nCode: Longint; wParam: WParam;
   lParam: LParam): LResult; stdcall;
 var
-  Z: array[0..KL_NAMELENGTH] of Char;
-  CurrLayout: string;
+  LayoutId, LayoutName: array[0..KL_NAMELENGTH - 1] of Char;
 begin
   if Assigned(KeyboardLayoutIndicator.OnUpdateIndicator)
     and (nCode = HSHELL_LANGUAGE) then
   begin
-    // Select the current layout from the list
-    if GetKeyboardLayoutName(Z) then
+    // Get the current layout from the list
+    if GetKeyboardLayoutName(LayoutId) then
     begin
-      CurrLayout := KeyboardLayoutIndicator.Layouts.Values[Z];
-      KeyboardLayoutIndicator.OnUpdateIndicator(CurrLayout);
+      LayoutName[0] := #0;
+      // MSDN marks GetLocaleInfo() as deprecated, but it works, and
+      // the Lazarus developers don't import the new GetLocaleInfoEx() function.
+      // You cas use LOCALE_SABBREVLANGNAME instead of LOCALE_SISO639LANGNAME
+      // to retrieve slightly more detailed layout name: e.g. ENU (U.S. English)
+      // instead of EN (English)
+      if GetLocaleInfo(StrToInt('$' + StrPas(LayoutId)), LOCALE_SISO639LANGNAME,
+        @LayoutName[0], SizeOf(LayoutName) - 1) <> 0 then
+        KeyboardLayoutIndicator.OnUpdateIndicator(StrPas(LayoutName));
     end;
   end;
   Result := CallNextHookEx(WH_SHELL, nCode, wParam, lParam);
 end;
 
-// Read locale list from the system registry. If anyone knows better way--
-// let me know, please
-procedure LoadLayouts(Layouts: TStrings);
-var
-  I: Integer;
-begin
-  with TRegistry.Create(KEY_READ) do
-  try
-    RootKey := HKEY_LOCAL_MACHINE;
-    if OpenKeyReadOnly('\SYSTEM\CurrentControlSet\Control\Keyboard ' +
-      'Layout\DosKeybCodes') then
-    begin
-      GetValueNames(Layouts);
-      for I := 0 to Layouts.Count - 1 do
-        Layouts[I] := Layouts[I] + '=' + ReadString(Layouts[I]);
-      CloseKey;
-    end;
-  finally
-    Free;
-  end;
-end;
 {$ELSE}
 
 { TXKbdThread }
@@ -183,6 +165,7 @@ procedure TXKbdThread.Execute;
     PLayout: PChar;
     Layout: string;
   begin
+    // Get the keyboad layout name and call the update event handler
     PLayout := XGetAtomName(Display, Keyboard^.names^.groups[State.group]);
     Layout := PLayout;
     Delete(Layout, 3, Length(Layout) - 2);
@@ -213,6 +196,7 @@ begin
       XKeysymToKeycode(Display, XK_F1);
       Keyboard := XkbGetKeyboard(Display, XkbAllComponentsMask, XkbUseCoreKbd);
 
+      // Initial layout name
       if XkbGetState(Display, XkbUseCoreKbd, @State) = 0 then
       begin
         UpdateCurrLayout(Display, Keyboard, State);
@@ -239,7 +223,7 @@ begin
       XkbFreeKeyboard(Keyboard, XkbAllComponentsMask, True);
     end;
 
-    // Release the resources used, destroy the window
+    // Release the resources used
     XkbSelectEvents(Display, XkbUseCoreKbd, XkbAllEventsMask, 0);
     XCloseDisplay(Display);
   end;
@@ -252,10 +236,7 @@ end;
 constructor TKeyboardLayoutIndicator.Create;
 begin
   FOnUpdateIndicator := nil;
-{$IF defined(WINDOWS)}
-  FLayouts := TStringList.Create;
-  LoadLayouts(FLayouts);
-{$ELSE}
+{$IF not defined(WINDOWS)}
   FXKbdThread := TXKbdThread.Create(True, Self);
 {$eNDIF}
 end;
@@ -264,9 +245,7 @@ destructor TKeyboardLayoutIndicator.Destroy;
 begin
   FOnUpdateIndicator := nil;
   StopWatching;
-{$IF defined(WINDOWS)}
-  FreeAndNil(FLayouts);
-{$ELSE}
+{$IF not defined(WINDOWS)}
   FreeAndNil(FXKbdThread);
 {$ENDIF}
   inherited Destroy;
