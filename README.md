@@ -8,7 +8,7 @@ I once tried to create a convenient login window for users who have more than on
 
 Also, this is cross-platform application (Windows + GNU/Linux) written in FreePascal / Lazarus and the indicator should work on both families of operating systems.
 
-A core of it's algorithm is a cross-platform class `TKeyboardLayoutIndicator` (Windows + GNU/Linux, I think, it should also work on all OSes with X11 and XKB support like FreeBSD) which keeps track of keyboard layout switching, reads the current keyboard locale from the OS in human-readable form ('US', 'RU', etc.) and writes it with an event handler `OnUpdateIndicator`:
+A core of it's algorithm is a cross-platform class `TKeyboardLayoutIndicator` (Windows + GNU/Linux, I think, it should also work on all OSes with X11 and XKB support like FreeBSD) which keeps track of keyboard layout switching, reads the current keyboard locale from the OS in human-readable form ('EN', 'IT', etc.) and writes it with an event handler `OnUpdateIndicator`:
 
 ``` delphi
 TIndicatorEvent = procedure(LayoutText: string) of object;
